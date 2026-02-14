@@ -12,10 +12,43 @@ requireRole('admin');
 
 // Get stats
 $totalRevenue = db()->fetch("SELECT SUM(total_amount) as total FROM orders WHERE order_status = 'delivered'")['total'] ?? 0;
-$monthlyRevenue = db()->fetch("SELECT SUM(total_amount) as total FROM orders WHERE order_status = 'delivered' AND MONTH(created_at) = MONTH(CURDATE())")['total'] ?? 0;
 $totalOrders = db()->count("SELECT COUNT(*) FROM orders");
 $totalCustomers = db()->count("SELECT COUNT(*) FROM users WHERE role = 'customer'");
 $totalProducts = db()->count("SELECT COUNT(*) FROM products WHERE is_active = 1");
+
+// Inventory Health (Real)
+$healthyProducts = db()->count("SELECT COUNT(*) FROM inventory i JOIN products p ON i.product_id = p.id WHERE p.is_active = 1 AND i.quantity > i.low_stock_threshold");
+$invHealth = $totalProducts > 0 ? (int)(($healthyProducts / $totalProducts) * 100) : 100;
+
+// Daily Revenue Trend
+$yesterday = date('Y-m-d', strtotime("-1 day"));
+$yesterdayRevenue = db()->fetch("SELECT SUM(revenue) as rev FROM sales_history WHERE sale_date = ?", [$yesterday])['rev'] ?? 0;
+$todayRevenue = db()->fetch("SELECT SUM(revenue) as rev FROM sales_history WHERE sale_date = CURDATE()")['rev'] ?? 0;
+$revDiff = $todayRevenue - $yesterdayRevenue;
+$revPercent = $yesterdayRevenue > 0 ? round(($revDiff / $yesterdayRevenue) * 100, 1) : ($todayRevenue > 0 ? 100 : 0);
+
+// User Growth (Real - last 24h)
+$newUsers = db()->count("SELECT COUNT(*) FROM users WHERE role = 'customer' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+
+// Sales Trends (Last 7 Days)
+$weeklySales = [];
+for ($i = 6; $i >= 0; $i--) {
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $rev = db()->fetch("SELECT SUM(revenue) as rev FROM sales_history WHERE sale_date = ?", [$date])['rev'] ?? 0;
+    $weeklySales[] = ['day' => date('D', strtotime($date)), 'rev' => (float)$rev];
+}
+$maxRev = max(array_column($weeklySales, 'rev')) ?: 1;
+
+// Inventory Alerts (Top 3)
+$alerts = db()->fetchAll("
+    SELECT p.name, i.quantity, i.low_stock_threshold, 
+           (SELECT AVG(quantity_sold) FROM sales_history WHERE product_id = p.id AND sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) as velocity
+    FROM products p
+    JOIN inventory i ON p.id = i.product_id
+    WHERE p.is_active = 1
+    ORDER BY (i.quantity / (1 + IFNULL(velocity, 0))) ASC
+    LIMIT 3
+");
 
 // Get recent orders
 $recentOrders = db()->fetchAll("
@@ -49,23 +82,24 @@ require_once __DIR__ . '/../includes/admin_header.php';
             <i class="fas fa-wallet" style="color: var(--admin-primary);"></i>
         </div>
         <div style="font-size: 2rem; font-weight: 800; color: var(--admin-text-primary); margin-bottom: 0.5rem;">
-            ₱<?php echo number_format($totalRevenue, 2); ?>
+            ₱<?php echo number_format($todayRevenue, 2); ?>
         </div>
-        <div style="color: var(--admin-success); font-size: 0.875rem; font-weight: 600;">
-            <i class="fas fa-chart-line"></i> +12.5% vs yesterday
+        <div style="color: <?php echo $revDiff >= 0 ? 'var(--admin-success)' : 'var(--admin-error)'; ?>; font-size: 0.875rem; font-weight: 600;">
+            <i class="fas <?php echo $revDiff >= 0 ? 'fa-chart-line' : 'fa-chart-bar'; ?>"></i> 
+            <?php echo ($revDiff >= 0 ? '+' : '') . $revPercent; ?>% vs yesterday
         </div>
     </div>
     
     <div class="admin-card" style="padding: 1.5rem; background: var(--admin-content-bg); border: 1px solid var(--admin-border); border-radius: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <span style="color: var(--admin-text-muted); font-size: 0.875rem; font-weight: 500;">Active Users</span>
+            <span style="color: var(--admin-text-muted); font-size: 0.875rem; font-weight: 500;">Active Customers</span>
             <i class="fas fa-users" style="color: var(--admin-info);"></i>
         </div>
         <div style="font-size: 2rem; font-weight: 800; color: var(--admin-text-primary); margin-bottom: 0.5rem;">
             <?php echo number_format($totalCustomers); ?>
         </div>
         <div style="color: var(--admin-success); font-size: 0.875rem; font-weight: 600;">
-            <i class="fas fa-chart-line"></i> +4.2% this hour
+            <i class="fas fa-user-plus"></i> +<?php echo $newUsers; ?> new today
         </div>
     </div>
     
@@ -75,10 +109,11 @@ require_once __DIR__ . '/../includes/admin_header.php';
             <i class="fas fa-box" style="color: var(--admin-warning);"></i>
         </div>
         <div style="font-size: 2rem; font-weight: 800; color: var(--admin-text-primary); margin-bottom: 0.5rem;">
-            85.4%
+            <?php echo $invHealth; ?>%
         </div>
-        <div style="color: var(--admin-error); font-size: 0.875rem; font-weight: 600;">
-            <i class="fas fa-arrow-down"></i> -2.1% stock alerts
+        <div style="color: <?php echo $invHealth > 80 ? 'var(--admin-success)' : 'var(--admin-error)'; ?>; font-size: 0.875rem; font-weight: 600;">
+            <i class="fas <?php echo $invHealth > 80 ? 'fa-check-circle' : 'fa-exclamation-triangle'; ?>"></i> 
+            <?php echo $healthyProducts; ?> / <?php echo $totalProducts; ?> items healthy
         </div>
     </div>
 </div>
@@ -87,70 +122,50 @@ require_once __DIR__ . '/../includes/admin_header.php';
     <!-- Sales Trends & Growth -->
     <div class="admin-card" style="padding: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 style="font-size: 1.125rem; font-weight: 700;">Sales Trends & Growth</h2>
-            <div style="display: flex; gap: 0.5rem; background: var(--admin-bg); padding: 0.25rem; border-radius: 8px;">
-                <button style="padding: 0.25rem 0.75rem; border-radius: 6px; border: none; background: var(--admin-primary); color: white; font-size: 0.75rem; font-weight: 600;">Weekly</button>
-                <button style="padding: 0.25rem 0.75rem; border-radius: 6px; border: none; background: transparent; color: var(--admin-text-secondary); font-size: 0.75rem; font-weight: 600;">Monthly</button>
-            </div>
+            <h2 style="font-size: 1.125rem; font-weight: 700;">Sales Trends (Last 7 Days)</h2>
         </div>
         
-        <!-- Placeholder for Chart -->
         <div style="height: 250px; display: flex; align-items: flex-end; gap: 1rem; padding-bottom: 2rem;">
-            <div style="flex: 1; background: rgba(59, 130, 246, 0.2); height: 40%; border-radius: 4px; position: relative;"><span style="position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--admin-text-muted);">Mon</span></div>
-            <div style="flex: 1; background: rgba(59, 130, 246, 0.2); height: 60%; border-radius: 4px; position: relative;"><span style="position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--admin-text-muted);">Tue</span></div>
-            <div style="flex: 1; background: rgba(59, 130, 246, 0.2); height: 50%; border-radius: 4px; position: relative;"><span style="position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--admin-text-muted);">Wed</span></div>
-            <div style="flex: 1; background: rgba(59, 130, 246, 0.2); height: 80%; border-radius: 4px; position: relative;"><span style="position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--admin-text-muted);">Thu</span></div>
-            <div style="flex: 1; background: var(--admin-primary); height: 100%; border-radius: 4px; position: relative;"><span style="position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--admin-text-muted);">Fri</span></div>
-            <div style="flex: 1; background: rgba(59, 130, 246, 0.2); height: 70%; border-radius: 4px; position: relative;"><span style="position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--admin-text-muted);">Sat</span></div>
-            <div style="flex: 1; background: rgba(59, 130, 246, 0.2); height: 85%; border-radius: 4px; position: relative;"><span style="position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--admin-text-muted);">Sun</span></div>
+            <?php foreach ($weeklySales as $s): 
+                $height = ($s['rev'] / $maxRev) * 100;
+            ?>
+            <div style="flex: 1; background: <?php echo $height == 100 ? 'var(--admin-primary)' : 'rgba(59, 130, 246, 0.2)'; ?>; height: <?php echo max(5, $height); ?>%; border-radius: 4px; position: relative;" title="₱<?php echo number_format($s['rev']); ?>">
+                <span style="position: absolute; bottom: -1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--admin-text-muted);"><?php echo $s['day']; ?></span>
+            </div>
+            <?php endforeach; ?>
         </div>
     </div>
     
     <!-- Inventory Forecast -->
     <div class="admin-card" style="padding: 1.5rem;">
-        <h2 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 1.5rem;">Inventory Forecast</h2>
+        <h2 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 1.5rem;">Stock Alerts</h2>
         
         <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <?php foreach ($alerts as $a): 
+                $vel = (float)$a['velocity'];
+                $days = $vel > 0 ? floor($a['quantity'] / $vel) : 99;
+                $p = $vel > 0 ? min(100, ($a['quantity'] / ($vel * 14)) * 100) : 100;
+                $color = $days < 7 ? 'var(--admin-error)' : 'var(--admin-warning)';
+            ?>
             <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--admin-border);">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span style="font-weight: 600; font-size: 0.875rem;">Smart Watch Series X</span>
-                    <span style="color: var(--admin-error); font-size: 0.75rem; font-weight: 700;">3 days left</span>
+                    <span style="font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;"><?php echo htmlspecialchars($a['name']); ?></span>
+                    <span style="color: <?php echo $color; ?>; font-size: 0.75rem; font-weight: 700;"><?php echo $days; ?> days left</span>
                 </div>
-                <div style="height: 6px; background: rgba(239, 68, 68, 0.1); border-radius: 3px; overflow: hidden;">
-                    <div style="width: 15%; height: 100%; background: var(--admin-error);"></div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                    <div style="width: <?php echo $p; ?>%; height: 100%; background: <?php echo $color; ?>;"></div>
                 </div>
-                <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;">Sales velocity: 42 units/day</div>
+                <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;">Daily Pace: <?php echo round($vel, 1); ?> units</div>
             </div>
-            
-            <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--admin-border);">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span style="font-weight: 600; font-size: 0.875rem;">Eco Headphones</span>
-                    <span style="color: var(--admin-warning); font-size: 0.75rem; font-weight: 700;">12 days left</span>
-                </div>
-                <div style="height: 6px; background: rgba(245, 158, 11, 0.1); border-radius: 3px; overflow: hidden;">
-                    <div style="width: 45%; height: 100%; background: var(--admin-warning);"></div>
-                </div>
-                <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;">Sales velocity: 18 units/day</div>
-            </div>
-            
-            <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--admin-border);">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span style="font-weight: 600; font-size: 0.875rem;">Wireless Charger Pad</span>
-                    <span style="color: var(--admin-success); font-size: 0.75rem; font-weight: 700;">28 days left</span>
-                </div>
-                <div style="height: 6px; background: rgba(16, 185, 129, 0.1); border-radius: 3px; overflow: hidden;">
-                    <div style="width: 75%; height: 100%; background: var(--admin-success);"></div>
-                </div>
-                <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;">Sales velocity: 125 units/day</div>
-            </div>
+            <?php endforeach; ?>
         </div>
-        <button class="admin-btn admin-btn-primary" style="width: 100%; margin-top: 1.5rem; justify-content: center; border-radius: 10px;">Generate Purchase Order</button>
+        <a href="forecast.php" class="admin-btn admin-btn-primary" style="width: 100%; margin-top: 1.5rem; justify-content: center; border-radius: 10px; text-decoration: none;">View Forecast Details</a>
     </div>
 </div>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
     <h2 style="font-size: 1.25rem; font-weight: 700;">Low Stock Alerts</h2>
-    <a href="inventory.php" style="color: var(--admin-primary); font-size: 0.875rem; font-weight: 600; text-decoration: none;">View All Inventory</a>
+    <a href="products.php" style="color: var(--admin-primary); font-size: 0.875rem; font-weight: 600; text-decoration: none;">View All Products</a>
 </div>
 
 <!-- Recent Orders -->

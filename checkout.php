@@ -67,6 +67,17 @@ $total = $subtotal + $tax;
 
 $error = '';
 
+// Parse saved address for pre-filling
+$addrParts = !empty($user['address']) ? explode(', ', $user['address']) : [];
+$savedStreet = $addrParts[0] ?? '';
+$savedBarangay = $addrParts[1] ?? '';
+$savedCity = $addrParts[2] ?? '';
+$savedProvince = $addrParts[3] ?? '';
+$savedZip = $addrParts[4] ?? '';
+
+$hasSavedAddress = !empty($user['address']);
+$showFields = !$hasSavedAddress || !empty($_POST);
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Collect structured address fields
     $street = trim($_POST['street'] ?? '');
@@ -100,18 +111,6 @@ $error = '';
                     INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
                     VALUES (?, ?, ?, ?, ?, ?)
                 ", [$orderId, $item['product_id'], $item['name'], $item['quantity'], $item['price'], $item['price'] * $item['quantity']]);
-                
-                db()->execute("UPDATE inventory SET quantity = quantity - ? WHERE product_id = ?", [$item['quantity'], $item['product_id']]);
-                
-                db()->insert("
-                    INSERT INTO stock_movements (product_id, quantity_change, movement_type, reference_id, notes, created_by)
-                    VALUES (?, ?, 'sale', ?, 'Order placed', ?)
-                ", [$item['product_id'], -$item['quantity'], $orderId, $userId]);
-                
-                db()->insert("
-                    INSERT INTO sales_history (product_id, quantity_sold, revenue, sale_date)
-                    VALUES (?, ?, ?, CURDATE())
-                ", [$item['product_id'], $item['quantity'], $item['price'] * $item['quantity']]);
             }
             
             db()->insert("INSERT INTO payments (order_id, amount, payment_method) VALUES (?, ?, ?)", [$orderId, $total, $paymentMethod]);
@@ -132,18 +131,16 @@ $error = '';
     }
 }
 
+$breadcrumbs = [
+    ['label' => 'Home', 'url' => 'index.php'],
+    ['label' => 'Cart', 'url' => 'cart.php'],
+    ['label' => 'Checkout']
+];
+
 require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="container py-5" style="max-width: 1000px;">
-    <!-- Breadcrumbs -->
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb" style="background: transparent; padding: 0;">
-            <li class="breadcrumb-item"><a href="index.php" style="color: var(--gray-500); text-decoration: none;">Home</a></li>
-            <li class="breadcrumb-item"><a href="cart.php" style="color: var(--gray-500); text-decoration: none;">Cart</a></li>
-            <li class="breadcrumb-item active" aria-current="page" style="color: var(--gray-900); font-weight: 600;">Checkout</li>
-        </ol>
-    </nav>
 
     <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 2.5rem; color: var(--gray-900);">Checkout</h1>
 
@@ -159,45 +156,71 @@ require_once __DIR__ . '/includes/header.php';
             <div class="checkout-main">
                 <!-- Shipping Details Card -->
                 <div class="se-card mb-4">
-                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
-                        <i class="fas fa-shipping-fast" style="color: var(--se-primary);"></i> Shipping Details
-                    </h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fas fa-shipping-fast" style="color: var(--se-primary);"></i> Shipping Details
+                        </h3>
+                        <?php if ($hasSavedAddress): ?>
+                        <button type="button" id="editAddressBtn" class="btn btn-sm" style="color: var(--se-primary); font-weight: 600; font-size: 0.875rem;" onclick="toggleAddressFields()">
+                            <i class="fas fa-edit"></i> Edit Address
+                        </button>
+                        <?php endif; ?>
+                    </div>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                        <div class="form-group">
-                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Full Name</label>
-                            <div style="padding: 0.75rem; background: var(--se-bg-soft); border-radius: 12px; font-weight: 600;"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></div>
+                    <!-- Saved Address Display -->
+                    <?php if ($hasSavedAddress): ?>
+                    <div id="savedAddressBox" style="display: <?php echo $showFields ? 'none' : 'block'; ?>; padding: 1.25rem; background: var(--se-bg-soft); border-radius: 16px; border: 1px solid var(--gray-100); margin-bottom: 1.5rem;">
+                        <div style="color: var(--gray-500); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Deliver to:</div>
+                        <div style="font-weight: 700; color: var(--gray-900); font-size: 1.1rem; margin-bottom: 0.25rem;">
+                            <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>
                         </div>
-                        <div class="form-group">
-                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Phone Number</label>
-                            <div style="padding: 0.75rem; background: var(--se-bg-soft); border-radius: 12px; font-weight: 600;"><?php echo htmlspecialchars($user['phone'] ?? '+63 XXX XXX XXXX'); ?></div>
+                        <div style="color: var(--gray-600); font-weight: 500; font-size: 0.9375rem; line-height: 1.5;">
+                            <?php echo htmlspecialchars($user['address']); ?>
                         </div>
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Street Address / House Number *</label>
-                        <input type="text" name="street" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. 123 Rizal St." value="<?php echo htmlspecialchars($_POST['street'] ?? ''); ?>">
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                        <div class="form-group">
-                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Barangay / Neighborhood *</label>
-                            <input type="text" name="barangay" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Brgy. 1" value="<?php echo htmlspecialchars($_POST['barangay'] ?? ''); ?>">
-                        </div>
-                        <div class="form-group">
-                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">City / Municipality *</label>
-                            <input type="text" name="city" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Makati City" value="<?php echo htmlspecialchars($_POST['city'] ?? ''); ?>">
+                        <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: var(--gray-500); font-size: 0.875rem;">
+                            <i class="fas fa-phone"></i> <?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?>
                         </div>
                     </div>
+                    <?php endif; ?>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                        <div class="form-group">
-                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Province / State *</label>
-                            <input type="text" name="province" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Metro Manila" value="<?php echo htmlspecialchars($_POST['province'] ?? ''); ?>">
+                    <!-- Address Fields (Shown if no saved address or editing) -->
+                    <div id="addressFormFields" style="display: <?php echo $showFields ? 'block' : 'none'; ?>;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                            <div class="form-group">
+                                <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Full Name</label>
+                                <div style="padding: 0.75rem; background: var(--se-bg-soft); border-radius: 12px; font-weight: 600;"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></div>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Phone Number</label>
+                                <div style="padding: 0.75rem; background: var(--se-bg-soft); border-radius: 12px; font-weight: 600;"><?php echo htmlspecialchars($user['phone'] ?? '+63 XXX XXX XXXX'); ?></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Postal / Zip Code *</label>
-                            <input type="text" name="zip" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. 1200" value="<?php echo htmlspecialchars($_POST['zip'] ?? ''); ?>">
+
+                        <div class="form-group mb-3">
+                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Street Address / House Number *</label>
+                            <input type="text" name="street" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. 123 Rizal St." value="<?php echo htmlspecialchars($_POST['street'] ?? $savedStreet); ?>">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                            <div class="form-group">
+                                <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Barangay / Neighborhood *</label>
+                                <input type="text" name="barangay" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Brgy. 1" value="<?php echo htmlspecialchars($_POST['barangay'] ?? $savedBarangay); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">City / Municipality *</label>
+                                <input type="text" name="city" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Makati City" value="<?php echo htmlspecialchars($_POST['city'] ?? $savedCity); ?>">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                            <div class="form-group">
+                                <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Province / State *</label>
+                                <input type="text" name="province" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Metro Manila" value="<?php echo htmlspecialchars($_POST['province'] ?? $savedProvince); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Postal / Zip Code *</label>
+                                <input type="text" name="zip" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. 1200" value="<?php echo htmlspecialchars($_POST['zip'] ?? $savedZip); ?>">
+                            </div>
                         </div>
                     </div>
 
@@ -303,6 +326,22 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <script>
+function toggleAddressFields() {
+    const savedBox = document.getElementById('savedAddressBox');
+    const formFields = document.getElementById('addressFormFields');
+    const editBtn = document.getElementById('editAddressBtn');
+    
+    if (formFields.style.display === 'none') {
+        formFields.style.display = 'block';
+        savedBox.style.display = 'none';
+        editBtn.innerHTML = '<i class="fas fa-times"></i> Cancel Edit';
+    } else {
+        formFields.style.display = 'none';
+        savedBox.style.display = 'block';
+        editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Address';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const radioButtons = document.querySelectorAll('input[name="payment_method"]');
     const gcashInstructions = document.getElementById('gcashInstructions');

@@ -14,6 +14,7 @@ $adminNavItems = [
     'navigation' => [
         ['icon' => 'fa-home', 'text' => 'Dashboard', 'url' => APP_URL . '/admin/dashboard.php', 'id' => 'dashboard'],
         ['icon' => 'fa-chart-line', 'text' => 'Analytics', 'url' => APP_URL . '/admin/analytics.php', 'id' => 'analytics'],
+        ['icon' => 'fa-brain', 'text' => 'Forecasting', 'url' => APP_URL . '/admin/forecast.php', 'id' => 'forecast'],
         ['icon' => 'fa-box', 'text' => 'Products', 'url' => APP_URL . '/admin/products.php', 'id' => 'products'],
         ['icon' => 'fa-users', 'text' => 'Customers', 'url' => APP_URL . '/admin/users.php', 'id' => 'users'],
         ['icon' => 'fa-file-alt', 'text' => 'Order Details', 'url' => APP_URL . '/admin/orders.php', 'id' => 'orders'],
@@ -49,7 +50,8 @@ $currentPage = $_GET['page'] ?? basename($_SERVER['PHP_SELF'], '.php');
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?php echo APP_URL; ?>/assets/css/admin.css?v=<?php echo time(); ?>">
+    <!-- Cache Buster: <?php echo time(); ?> -->
+    <link rel="stylesheet" href="<?php echo APP_URL; ?>/assets/css/admin.css?v=<?php echo file_exists(__DIR__ . '/../assets/css/admin.css') ? filemtime(__DIR__ . '/../assets/css/admin.css') : time(); ?>">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php if (isset($extraCss)): ?>
     <link rel="stylesheet" href="<?php echo $extraCss; ?>">

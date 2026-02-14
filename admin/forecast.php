@@ -1,9 +1,9 @@
 <?php
 /**
- * Demand Forecasting Module
- * Uses moving averages and trend analysis for stock predictions
+ * Demand Forecasting Module - Single-View High Fidelity Overhaul
  */
-$pageTitle = 'Demand Forecasting';
+$pageTitle = 'Inventory Forecasting';
+$_GET['page'] = 'forecast';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 
@@ -11,258 +11,312 @@ requireAuth();
 requireRole('admin');
 
 /**
- * Calculate moving average
+ * Helpers
  */
-function calculateMovingAverage($data, $periods = 7) {
-    if (count($data) < $periods) return array_sum($data) / max(count($data), 1);
-    $slice = array_slice($data, -$periods);
-    return array_sum($slice) / $periods;
-}
-
-/**
- * Calculate trend (simple linear regression slope)
- */
-function calculateTrend($data) {
-    $n = count($data);
-    if ($n < 2) return 0;
-    
-    $sumX = 0; $sumY = 0; $sumXY = 0; $sumX2 = 0;
-    
-    foreach ($data as $i => $y) {
-        $x = $i + 1;
-        $sumX += $x;
-        $sumY += $y;
-        $sumXY += $x * $y;
-        $sumX2 += $x * $x;
+function calculateStats($data) {
+    if (empty($data)) return ['mean' => 0, 'std_dev' => 0];
+    $count = count($data);
+    $mean = array_sum($data) / $count;
+    $variance = 0;
+    foreach ($data as $val) {
+        $variance += pow($val - $mean, 2);
     }
-    
-    $denominator = ($n * $sumX2 - $sumX * $sumX);
-    if ($denominator == 0) return 0;
-    
-    return ($n * $sumXY - $sumX * $sumY) / $denominator;
+    $std_dev = sqrt($variance / max($count, 1));
+    return ['mean' => $mean, 'std_dev' => $std_dev];
 }
 
-// Get products with sales history
-$products = db()->fetchAll("
+// Filters
+$search = $_GET['search'] ?? '';
+$categoryFilter = $_GET['category'] ?? '';
+$statusFilter = $_GET['status'] ?? '';
+
+// Base Query
+$sql = "
     SELECT p.*, c.name as category_name, i.quantity as stock, i.low_stock_threshold
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     LEFT JOIN inventory i ON p.id = i.product_id
     WHERE p.is_active = 1
-    ORDER BY p.name
-");
+";
+$params = [];
 
-$forecasts = [];
+if ($search) {
+    $sql .= " AND (p.name LIKE ? OR p.sku LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+}
+if ($categoryFilter) {
+    $sql .= " AND c.id = ?";
+    $params[] = $categoryFilter;
+}
 
+$sql .= " ORDER BY p.name";
+
+$products = db()->fetchAll($sql, $params);
+$categories = db()->fetchAll("SELECT * FROM categories ORDER BY name");
+$suppliers = db()->fetchAll("SELECT * FROM suppliers LIMIT 4");
+
+$insights = [];
 foreach ($products as $product) {
-    // Get last 30 days of sales
     $salesData = db()->fetchAll("
         SELECT sale_date, SUM(quantity_sold) as qty
         FROM sales_history
         WHERE product_id = ? AND sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         GROUP BY sale_date
-        ORDER BY sale_date ASC
     ", [$product['id']]);
     
-    $dailySales = array_column($salesData, 'qty');
-    
-    if (empty($dailySales)) {
-        $forecasts[$product['id']] = [
-            'product' => $product,
-            'avg_daily_sales' => 0,
-            'trend' => 'stable',
-            'forecast_7_days' => 0,
-            'forecast_30_days' => 0,
-            'days_of_stock' => $product['stock'] > 0 ? 999 : 0,
-            'recommendation' => 'No sales data',
-            'status' => 'unknown'
-        ];
-        continue;
+    $dailySales = array_fill(0, 30, 0); 
+    foreach ($salesData as $row) {
+        $daysAgo = (int)date_diff(date_create($row['sale_date']), date_create())->format('%a');
+        if ($daysAgo < 30) $dailySales[29 - $daysAgo] = (float)$row['qty'];
     }
+
+    $stats = calculateStats($dailySales);
+    $velocity = $stats['mean'];
+    $volatility = $velocity > 0 ? ($stats['std_dev'] / $velocity) : 0;
     
-    $avgDailySales = calculateMovingAverage($dailySales, 7);
-    $trend = calculateTrend($dailySales);
+    $forecast30 = ceil($velocity * 30);
+    $reorderQty = max(0, $forecast30 - $product['stock']);
+    $daysRemaining = $velocity > 0 ? floor($product['stock'] / $velocity) : 999;
     
-    // Forecast with trend adjustment
-    $forecast7 = max(0, round($avgDailySales * 7 + ($trend * 7)));
-    $forecast30 = max(0, round($avgDailySales * 30 + ($trend * 30)));
-    
-    // Days of stock remaining
-    $daysOfStock = $avgDailySales > 0 ? floor($product['stock'] / $avgDailySales) : 999;
-    
-    // Determine trend direction
-    $trendDirection = 'stable';
-    if ($trend > 0.5) $trendDirection = 'increasing';
-    elseif ($trend < -0.5) $trendDirection = 'decreasing';
-    
-    // Generate recommendation
     $status = 'ok';
-    $recommendation = 'Stock levels adequate';
-    
-    if ($daysOfStock < 7) {
-        $status = 'critical';
-        $recommendation = "URGENT: Order " . max(0, $forecast30 - $product['stock']) . " units immediately";
-    } elseif ($daysOfStock < 14) {
-        $status = 'warning';
-        $recommendation = "Reorder soon: Need " . max(0, $forecast30 - $product['stock']) . " units";
-    } elseif ($product['stock'] > $forecast30 * 3) {
-        $status = 'overstock';
-        $recommendation = "Consider promotion - excess stock of " . ($product['stock'] - $forecast30 * 2) . " units";
-    }
-    
-    $forecasts[$product['id']] = [
+    if ($daysRemaining < 7) $status = 'critical';
+    elseif ($daysRemaining < 14) $status = 'warning';
+    elseif ($product['stock'] > ($forecast30 * 2) && $product['stock'] > 20) $status = 'overstock';
+
+    $volLabel = 'Steady';
+    if ($volatility > 1.2) $volLabel = 'Unpredictable';
+    elseif ($volatility > 0.6) $volLabel = 'Changing';
+
+    if ($statusFilter && $status !== $statusFilter) continue;
+
+    $insights[] = [
         'product' => $product,
-        'avg_daily_sales' => round($avgDailySales, 1),
-        'trend' => $trendDirection,
-        'trend_value' => round($trend, 2),
-        'forecast_7_days' => $forecast7,
-        'forecast_30_days' => $forecast30,
-        'days_of_stock' => $daysOfStock,
-        'recommendation' => $recommendation,
+        'velocity' => round($velocity, 1),
+        'volatility' => $volLabel,
+        'forecast30' => $forecast30,
+        'reorder_qty' => $reorderQty,
         'status' => $status
     ];
 }
 
-// Sort by status priority
-usort($forecasts, function($a, $b) {
-    $priority = ['critical' => 0, 'warning' => 1, 'overstock' => 2, 'ok' => 3, 'unknown' => 4];
-    return ($priority[$a['status']] ?? 5) - ($priority[$b['status']] ?? 5);
-});
+// Global Metrics
+$totalValue = array_sum(array_map(fn($item) => $item['product']['stock'] * $item['product']['price'], $insights));
+$totalShortfall = array_sum(array_column($insights, 'reorder_qty'));
 
-require_once __DIR__ . '/../includes/header.php';
+// Pagination
+$perPage = 8; // Adjust for single view height
+$totalItems = count($insights);
+$totalPages = ceil($totalItems / $perPage);
+$pageNum = max(1, min($totalPages, (int)($_GET['p'] ?? 1)));
+$offset = ($pageNum - 1) * $perPage;
+$pagedInsights = array_slice($insights, $offset, $perPage);
+
+require_once __DIR__ . '/../includes/admin_header.php';
 ?>
 
-<div class="page-header">
-    <div class="page-header-content">
-        <h1 class="page-title">Demand Forecasting</h1>
-        <a href="analytics.php" class="btn btn-ghost"><i class="fas fa-chart-line"></i> Analytics</a>
-    </div>
-</div>
+<style>
+    :root {
+        --f-bg: #0f172a;
+        --f-card: #1e293b;
+        --f-border: rgba(255, 255, 255, 0.05);
+        --f-text: #f8fafc;
+        --f-muted: #94a3b8;
+        --f-primary: #6366f1;
+        --f-glow: 0 0 15px rgba(99, 102, 241, 0.4);
+    }
 
-<div class="section" style="padding-top: 2rem;">
-    <div class="container">
-        <div class="alert alert-info mb-3">
-            <i class="fas fa-info-circle"></i>
-            <div>
-                <strong>About Forecasting:</strong> Predictions are based on 30-day moving averages with trend analysis. 
-                Review recommendations regularly and adjust based on seasonal factors or promotions.
-            </div>
+    .admin-main { background: var(--f-bg) !important; color: var(--f-text); height: 100vh; overflow: hidden; }
+    .admin-content { height: calc(100vh - 70px); padding: 1rem !important; display: flex; flex-direction: column; }
+
+    .f-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem; flex-shrink: 0; }
+    .f-title h1 { font-size: 1.25rem; font-weight: 800; margin: 0; }
+    .f-title p { font-size: 0.75rem; color: var(--f-muted); margin: 0; }
+    
+    .stats-row { display: flex; gap: 0.75rem; }
+    .stat-card { background: var(--f-card); border: 1px solid var(--f-border); padding: 0.5rem 1rem; border-radius: 10px; min-width: 140px; }
+    .stat-label { font-size: 0.55rem; font-weight: 800; color: var(--f-muted); text-transform: uppercase; margin-bottom: 0.125rem; }
+    .stat-val { font-size: 1.15rem; font-weight: 800; }
+    .stat-unit { font-size: 0.65rem; color: var(--f-muted); }
+
+    .filter-bar { 
+        background: var(--f-card); border: 1px solid var(--f-border); padding: 0.5rem 0.75rem; border-radius: 10px; margin-bottom: 1rem;
+        display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;
+    }
+    .filter-input { background: rgba(0,0,0,0.2); border: 1px solid var(--f-border); border-radius: 6px; padding: 0.4rem 0.75rem; color: var(--f-text); font-size: 0.75rem; }
+    .filter-btn { background: var(--f-primary); border: none; padding: 0.4rem 1rem; border-radius: 6px; color: white; font-weight: 700; cursor: pointer; font-size: 0.75rem; }
+
+    /* Compact Grid Layout */
+    .f-main-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1rem; flex: 1; min-height: 0; }
+    
+    .card { background: var(--f-card); border: 1px solid var(--f-border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+    .card-title { padding: 0.75rem 1rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; background: rgba(255,255,255,0.02); }
+    .card-title i { color: var(--f-primary); }
+
+    .f-table-wrapper { flex: 1; overflow-y: auto; }
+    .f-table { width: 100%; border-collapse: collapse; }
+    .f-table th { position: sticky; top: 0; text-align: left; padding: 0.5rem 1rem; font-size: 0.65rem; font-weight: 700; color: var(--f-muted); text-transform: uppercase; border-bottom: 1px solid var(--f-border); background: #161e2e; z-index: 10; }
+    .f-table td { padding: 0.75rem 1rem; font-size: 0.75rem; border-bottom: 1px solid var(--f-border); }
+    
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    
+    /* pagination */
+    .pagination { padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: var(--f-muted); border-top: 1px solid var(--f-border); flex-shrink: 0; }
+    .pg-list { display: flex; gap: 0.35rem; align-items: center; }
+    .pg-item { 
+        width: 26px; height: 26px; border-radius: 6px; background: rgba(255,255,255,0.03); 
+        display: flex; align-items: center; justify-content: center; text-decoration: none; 
+        color: var(--f-muted); font-weight: 600; font-size: 0.75rem; border: 1px solid var(--f-border);
+        transition: all 0.2s;
+    }
+    .pg-item.active { 
+        background: var(--f-primary); color: white; border-color: var(--f-primary); 
+        box-shadow: var(--f-glow); font-weight: 800;
+    }
+    .pg-item:hover:not(.active) { background: rgba(255,255,255,0.08); color: var(--f-text); }
+
+    .insight { background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 10px; padding: 0.75rem; display: flex; gap: 0.75rem; align-items: center; margin-top: 0.75rem; flex-shrink: 0; }
+    .insight-icon { width: 28px; height: 28px; background: rgba(99, 102, 241, 0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--f-primary); flex-shrink: 0; }
+    .insight-text { font-size: 0.7rem; color: var(--f-muted); line-height: 1.4; }
+</style>
+
+<div class="f-header">
+    <div class="f-title">
+        <h1>Forecast & Planning</h1>
+        <p>Real-time demand projections and restock schedules.</p>
+    </div>
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Est. Shortfall</div>
+            <div class="stat-val"><?php echo number_format($totalShortfall); ?> <span class="stat-unit">units</span></div>
         </div>
-        
-        <!-- Summary Cards -->
-        <div class="stats-grid mb-3">
-            <?php
-            $criticalCount = count(array_filter($forecasts, fn($f) => $f['status'] == 'critical'));
-            $warningCount = count(array_filter($forecasts, fn($f) => $f['status'] == 'warning'));
-            $overstockCount = count(array_filter($forecasts, fn($f) => $f['status'] == 'overstock'));
-            ?>
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(239,68,68,0.1); color: #ef4444;"><i class="fas fa-exclamation-triangle"></i></div>
-                <div class="stat-content">
-                    <h3><?php echo $criticalCount; ?></h3>
-                    <p>Critical (< 7 days)</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon warning"><i class="fas fa-exclamation-circle"></i></div>
-                <div class="stat-content">
-                    <h3><?php echo $warningCount; ?></h3>
-                    <p>Warning (< 14 days)</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon primary"><i class="fas fa-boxes"></i></div>
-                <div class="stat-content">
-                    <h3><?php echo $overstockCount; ?></h3>
-                    <p>Overstock</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
-                <div class="stat-content">
-                    <h3><?php echo count($forecasts) - $criticalCount - $warningCount - $overstockCount; ?></h3>
-                    <p>Healthy Stock</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Forecast Table -->
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-brain"></i> Product Demand Forecast</h3>
-            </div>
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Current Stock</th>
-                            <th>Avg Daily Sales</th>
-                            <th>Trend</th>
-                            <th>7-Day Forecast</th>
-                            <th>30-Day Forecast</th>
-                            <th>Days of Stock</th>
-                            <th>Recommendation</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($forecasts as $f): ?>
-                        <?php
-                        $rowClass = match($f['status']) {
-                            'critical' => 'background: rgba(239,68,68,0.05);',
-                            'warning' => 'background: rgba(245,158,11,0.05);',
-                            'overstock' => 'background: rgba(99,102,241,0.05);',
-                            default => ''
-                        };
-                        $trendIcon = match($f['trend']) {
-                            'increasing' => '<i class="fas fa-arrow-up" style="color: var(--success);"></i>',
-                            'decreasing' => '<i class="fas fa-arrow-down" style="color: var(--error);"></i>',
-                            default => '<i class="fas fa-minus" style="color: var(--gray-400);"></i>'
-                        };
-                        ?>
-                        <tr style="<?php echo $rowClass; ?>">
-                            <td>
-                                <strong><?php echo htmlspecialchars($f['product']['name']); ?></strong>
-                                <br><small style="color: var(--gray-500);"><?php echo $f['product']['category_name'] ?? 'Uncategorized'; ?></small>
-                            </td>
-                            <td>
-                                <span class="<?php echo $f['product']['stock'] <= $f['product']['low_stock_threshold'] ? 'stock-low' : 'stock-in'; ?>">
-                                    <?php echo $f['product']['stock']; ?>
-                                </span>
-                            </td>
-                            <td><?php echo $f['avg_daily_sales']; ?></td>
-                            <td><?php echo $trendIcon; ?> <?php echo ucfirst($f['trend']); ?></td>
-                            <td><?php echo $f['forecast_7_days']; ?> units</td>
-                            <td><?php echo $f['forecast_30_days']; ?> units</td>
-                            <td>
-                                <?php if ($f['days_of_stock'] >= 999): ?>
-                                    <span style="color: var(--gray-400);">N/A</span>
-                                <?php else: ?>
-                                    <span class="<?php echo $f['days_of_stock'] < 7 ? 'stock-out' : ($f['days_of_stock'] < 14 ? 'stock-low' : 'stock-in'); ?>">
-                                        <?php echo $f['days_of_stock']; ?> days
-                                    </span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php
-                                $badgeClass = match($f['status']) {
-                                    'critical' => 'badge-error',
-                                    'warning' => 'badge-warning',
-                                    'overstock' => 'badge-info',
-                                    default => 'badge-success'
-                                };
-                                ?>
-                                <span class="badge <?php echo $badgeClass; ?>" style="font-size: 0.7rem;">
-                                    <?php echo $f['recommendation']; ?>
-                                </span>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+        <div class="stat-card">
+            <div class="stat-label">Inv. Value</div>
+            <div class="stat-val">₱<?php echo number_format($totalValue/1000, 1); ?>k</div>
         </div>
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<form method="GET" class="filter-bar">
+    <i class="fas fa-filter" style="color: var(--f-muted); font-size: 0.75rem;"></i>
+    <input type="text" name="search" placeholder="Search product..." class="filter-input" value="<?php echo htmlspecialchars($search); ?>" style="flex: 1;">
+    <select name="category" class="filter-input">
+        <option value="">All Categories</option>
+        <?php foreach ($categories as $cat): ?>
+            <option value="<?php echo $cat['id']; ?>" <?php echo $categoryFilter == $cat['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat['name']); ?></option>
+        <?php endforeach; ?>
+    </select>
+    <select name="status" class="filter-input">
+        <option value="">All Statuses</option>
+        <option value="critical" <?php echo $statusFilter == 'critical' ? 'selected' : ''; ?>>Critical</option>
+        <option value="warning" <?php echo $statusFilter == 'warning' ? 'selected' : ''; ?>>Warning</option>
+        <option value="overstock" <?php echo $statusFilter == 'overstock' ? 'selected' : ''; ?>>Overstock</option>
+    </select>
+    <button type="submit" class="filter-btn">Apply</button>
+</form>
+
+<div class="f-main-grid">
+    <!-- Left Table -->
+    <div class="card">
+        <div class="card-title"><i class="fas fa-chart-column"></i> Inventory Forecast</div>
+        <div class="f-table-wrapper">
+            <table class="f-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Stock</th>
+                        <th style="text-align: right;">Sold Daily</th>
+                        <th>Sale Pattern</th>
+                        <th style="text-align: right;">Next 30 Days</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($pagedInsights as $item): 
+                        $dotColor = $item['status'] == 'critical' ? '#ef4444' : ($item['status'] == 'warning' ? '#f59e0b' : '#10b981');
+                        $volColor = $item['volatility'] == 'Erratic' ? '#ef4444' : ($item['volatility'] == 'Variable' ? '#f59e0b' : '');
+                    ?>
+                    <tr>
+                        <td>
+                            <div style="font-weight: 700; font-size: 0.8rem;"><?php echo htmlspecialchars($item['product']['name']); ?></div>
+                            <div style="font-size: 10px; color: var(--f-muted);"><?php echo htmlspecialchars($item['product']['sku']); ?></div>
+                        </td>
+                        <td>
+                            <span class="status-dot" style="background: <?php echo $dotColor; ?>;"></span>
+                            <span style="font-size: 0.65rem; text-transform: capitalize; color: var(--f-muted);"><?php echo $item['status']; ?></span>
+                        </td>
+                        <td style="text-align: right; font-weight: 800;"><?php echo $item['product']['stock']; ?></td>
+                        <td style="text-align: right;"><strong><?php echo $item['velocity']; ?></strong></td>
+                        <td style="font-weight: 700; color: <?php echo $volColor; ?>; font-size: 0.7rem;"><?php echo $item['volatility']; ?></td>
+                        <td style="text-align: right; font-weight: 800;"><?php echo $item['forecast30']; ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        
+        <?php if ($totalPages > 1): ?>
+        <div class="pagination">
+            <span>Page <strong><?php echo $pageNum; ?></strong> of <?php echo $totalPages; ?></span>
+            <div class="pg-list">
+                <?php 
+                $start = max(1, $pageNum - 1);
+                $end = min($totalPages, $pageNum + 1);
+                if($pageNum > 1) echo '<a href="?'.http_build_query(array_merge($_GET, ['p' => 1])).'" class="pg-item" title="First"><i class="fas fa-angles-left" style="font-size: 10px;"></i></a>';
+                for($i = $start; $i <= $end; $i++): ?>
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['p' => $i])); ?>" class="pg-item <?php echo $i == $pageNum ? 'active' : ''; ?>"><?php echo $i; ?></a>
+                <?php endfor; 
+                if($pageNum < $totalPages) echo '<a href="?'.http_build_query(array_merge($_GET, ['p' => $totalPages])).'" class="pg-item" title="Last"><i class="fas fa-angles-right" style="font-size: 10px;"></i></a>';
+                ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+    </div>
+
+    <!-- Right Table -->
+    <div class="card">
+        <div class="card-title"><i class="fas fa-truck-ramp-box"></i> Restock Planning</div>
+        <div class="f-table-wrapper">
+            <table class="f-table">
+                <thead>
+                    <tr>
+                        <th>Supplier</th>
+                        <th>Lead</th>
+                        <th style="text-align: right;">Min Qty</th>
+                        <th style="text-align: right;">Cost</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($suppliers as $s): ?>
+                    <tr>
+                        <td>
+                            <div style="font-weight: 700;"><?php echo htmlspecialchars($s['name']); ?></div>
+                            <div style="font-size: 10px; color: var(--f-muted);">Logistic Provider</div>
+                        </td>
+                        <td style="font-weight: 600;">14d</td>
+                        <td style="text-align: right; font-weight: 600;">50u</td>
+                        <td style="text-align: right; font-weight: 700;">₱1,250</td>
+                        <td>
+                            <button class="pg-item active" style="width: auto; padding: 0 0.5rem; font-size: 0.65rem; height: 22px;">PO</button>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div style="padding: 0.75rem; font-size: 0.65rem; color: var(--f-muted); border-top: 1px solid var(--f-border); background: rgba(0,0,0,0.1);">
+            <i class="fas fa-info-circle"></i> Showing active tier-1 suppliers for immediate restock.
+        </div>
+    </div>
+</div>
+
+<div class="insight">
+    <div class="insight-icon"><i class="fas fa-lightbulb"></i></div>
+    <div class="insight-text">
+        <strong>Optimization Insight:</strong> Turnover is <strong>13% higher</strong> than last month. Concentrating orders with <strong>Nexus Distribution</strong> could save ₱4,200 in monthly logistics fees. Next restock window: Feb 20-22.
+    </div>
+</div>
+
+<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>

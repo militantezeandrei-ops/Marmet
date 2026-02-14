@@ -29,22 +29,6 @@ $recentOrders = db()->fetchAll("
 require_once __DIR__ . '/../includes/admin_header.php';
 ?>
 
-<div style="margin-bottom: 2.5rem; padding: 2.5rem; background: var(--admin-gradient-primary); border-radius: 32px; color: white; box-shadow: var(--admin-shadow-premium); position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center;">
-    <div style="position: absolute; top: 0; right: 0; width: 450px; height: 450px; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%); transform: translate(30%, -30%);"></div>
-    <div style="position: relative; z-index: 1;">
-        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
-             <span class="pulse-primary" style="width: 12px; height: 12px; background: #4ade80; border-radius: 50%; display: inline-block;"></span>
-             <span style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.9;">System v2.1 Operational</span>
-        </div>
-        <h1 style="font-size: 3.5rem; font-weight: 900; letter-spacing: -0.05em; margin: 0; line-height: 0.9;">Staff Overview</h1>
-        <p style="opacity: 0.9; font-size: 1.3rem; font-weight: 500; margin-top: 1rem;">Intelligent monitoring & fulfillment center</p>
-    </div>
-    <div style="position: relative; z-index: 1;">
-        <button class="admin-btn hover-lift" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 16px; padding: 0.875rem 1.75rem; font-weight: 700; text-decoration: none;">
-            <i class="fas fa-file-export"></i> &nbsp; Weekly Insights
-        </button>
-    </div>
-</div>
 
 <!-- Dashboard Stats -->
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">

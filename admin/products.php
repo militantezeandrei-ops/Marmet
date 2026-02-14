@@ -65,6 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $categories = db()->fetchAll("SELECT * FROM categories WHERE is_active = 1 ORDER BY name");
 $suppliers = db()->fetchAll("SELECT * FROM suppliers WHERE is_active = 1 ORDER BY name");
 
+// Pagination
+$perPage = 10;
+$totalItems = db()->count("SELECT COUNT(*) FROM products WHERE is_active = 1");
+$totalPages = ceil($totalItems / $perPage);
+$pageNum = max(1, min($totalPages, (int)($_GET['p'] ?? 1)));
+$offset = ($pageNum - 1) * $perPage;
+
 // Get products
 $products = db()->fetchAll("
     SELECT p.*, c.name as category_name, s.name as supplier_name, i.quantity as stock, i.low_stock_threshold
@@ -74,6 +81,7 @@ $products = db()->fetchAll("
     LEFT JOIN inventory i ON p.id = i.product_id
     WHERE p.is_active = 1
     ORDER BY p.created_at DESC
+    LIMIT $perPage OFFSET $offset
 ");
 
 require_once __DIR__ . '/../includes/admin_header.php';
@@ -160,14 +168,27 @@ require_once __DIR__ . '/../includes/admin_header.php';
             </tbody>
         </table>
     </div>
-    <div class="admin-pagination">
-        <button class="admin-pagination-btn"><i class="fas fa-chevron-left"></i></button>
-        <button class="admin-pagination-btn active">1</button>
-        <button class="admin-pagination-btn">2</button>
-        <button class="admin-pagination-btn">3</button>
-        <button class="admin-pagination-btn">4</button>
-        <button class="admin-pagination-btn"><i class="fas fa-chevron-right"></i></button>
+    <?php if ($totalPages > 1): ?>
+    <div style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--admin-border);">
+        <span style="font-size: 0.75rem; color: var(--admin-text-muted);">
+            Showing page <strong><?php echo $pageNum; ?></strong> of <?php echo $totalPages; ?>
+        </span>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <?php 
+            $start = max(1, $pageNum - 1);
+            $end = min($totalPages, $pageNum + 1);
+            
+            if($pageNum > 1) echo '<a href="?p=1" class="admin-pagination-btn" title="First"><i class="fas fa-angles-left" style="font-size: 10px;"></i></a>';
+            
+            for($i = $start; $i <= $end; $i++): ?>
+                <a href="?p=<?php echo $i; ?>" class="admin-pagination-btn <?php echo $i == $pageNum ? 'active' : ''; ?>"><?php echo $i; ?></a>
+            <?php endfor; 
+            
+            if($pageNum < $totalPages) echo '<a href="?p='.$totalPages.'" class="admin-pagination-btn" title="Last"><i class="fas fa-angles-right" style="font-size: 10px;"></i></a>';
+            ?>
+        </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <!-- Product Modal -->

@@ -365,6 +365,209 @@ body.admin-body {
     animation: pulse-status 2s infinite;
 }
 
+@keyframes modalSlideUp {
+    from {
+        transform: translateY(30px) scale(0.98);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-animate-in {
+    animation: modalSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Modal Popup Styles */
+/* Modal Popup Styles - Standardized */
+/* Modal Popup Styles - Glassmorphism & Compact */
+.admin-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.45);
+    /* Slightly transparent for glass effect */
+    backdrop-filter: blur(12px);
+    /* Strong blur */
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 100000;
+    /* Ensure it's above everything */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    opacity: 0;
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.admin-modal-container {
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    max-height: 90vh;
+    /* Constraint height */
+    display: flex;
+    /* Flex container */
+    flex-direction: column;
+    position: relative;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    overflow: hidden;
+}
+
+/* Ensure the card inside expands to fill the container */
+.admin-modal-container .admin-card {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    background: transparent;
+    /* Let container background show */
+    border: none;
+    box-shadow: none;
+}
+
+.modal-scrollable-body {
+    flex: 1;
+    /* Take remaining space */
+    overflow-y: auto;
+    /* Scroll internally */
+    padding: 1.5rem;
+    min-height: 0;
+    /* Crucial for flex scrolling */
+}
+
+/* Ensure footer and header don't shrink */
+.admin-card-header,
+.admin-modal-container form {
+    flex-shrink: 0;
+}
+
+.modal-compact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Glassy Inner Cards */
+.detail-section-card {
+    background: rgba(255, 255, 255, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.detail-section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--admin-text-secondary);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+[data-theme="dark"] .admin-modal-container {
+    background: rgba(30, 41, 59, 0.85) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .detail-section-card {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 768px) {
+    .modal-compact-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+/* Custom Scrollbar for Modal */
+.admin-modal-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-modal-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.admin-modal-container::-webkit-scrollbar-thumb {
+    background: var(--admin-border);
+    border-radius: 10px;
+}
+
+/* Structured Detail Layouts */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.detail-section-card {
+    background: var(--admin-bg);
+    border: 1px solid var(--admin-border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    height: 100%;
+}
+
+.detail-section-title {
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--admin-text-muted);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 0.875rem;
+    color: var(--admin-text-secondary);
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 0.875rem;
+    color: var(--admin-text-primary);
+    font-weight: 700;
+}
+
+
 .hover-lift {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -633,4 +836,107 @@ body.admin-body {
     .admin-search {
         display: none;
     }
+}
+
+/* Compact UI Utilities */
+.compact-card {
+    padding: 1rem !important;
+}
+
+.compact-card .admin-card-header {
+    padding: 0.75rem 1rem;
+}
+
+.compact-card .admin-card-body {
+    padding: 1rem;
+}
+
+.mini-table th,
+.mini-table td {
+    padding: 0.625rem 0.75rem !important;
+    font-size: 0.8125rem !important;
+}
+
+.text-xs {
+    font-size: 0.75rem !important;
+}
+
+.text-sm {
+    font-size: 0.875rem !important;
+}
+
+.font-bold {
+    font-weight: 700 !important;
+}
+
+.m-0 {
+    margin: 0 !important;
+}
+
+.mb-1 {
+    margin-bottom: 0.25rem !important;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem !important;
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+/* Insight Cards for Forecasting */
+.insight-card {
+    background: var(--admin-content-bg);
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.insight-card:hover {
+    border-color: var(--admin-primary);
+    box-shadow: var(--admin-shadow);
+}
+
+.insight-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+.status-critical {
+    background-color: var(--admin-error);
+}
+
+.status-warning {
+    background-color: var(--admin-warning);
+}
+
+.status-ok {
+    background-color: var(--admin-success);
+}
+
+.status-info {
+    background-color: var(--admin-info);
+}
+
+/* Demographic Chart Utility */
+.demographic-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--admin-bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.25rem;
+}
+
+.demographic-bar {
+    height: 100%;
+    background: var(--admin-primary);
 }

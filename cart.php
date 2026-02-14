@@ -25,17 +25,15 @@ $allCartItems = db()->fetchAll("
 $activeItems = array_filter($allCartItems, fn($item) => $item['is_saved_for_later'] == 0);
 $savedItems = array_filter($allCartItems, fn($item) => $item['is_saved_for_later'] == 1);
 
+$breadcrumbs = [
+    ['label' => 'Home', 'url' => 'index.php'],
+    ['label' => 'Cart']
+];
+
 require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="container py-4" style="max-width: 1000px;">
-    <!-- Breadcrumbs -->
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb" style="background: transparent; padding: 0;">
-            <li class="breadcrumb-item"><a href="index.php" style="color: var(--gray-500); text-decoration: none;">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page" style="color: var(--gray-900); font-weight: 600;">Cart</li>
-        </ol>
-    </nav>
 
     <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 2rem; color: var(--gray-900);">Shopping Cart</h1>
     

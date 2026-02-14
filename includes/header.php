@@ -82,9 +82,25 @@ $currentCategoryId = isset($_GET['category']) ? (int)$_GET['category'] : null;
             </div>
 
             <div class="nav-menu" id="navMenu">
-                <a href="<?php echo APP_URL; ?>/catalog.php?cat=electronics" class="nav-link">Electronics</a>
-                <a href="<?php echo APP_URL; ?>/catalog.php?cat=fashion" class="nav-link">Fashion</a>
-                <a href="<?php echo APP_URL; ?>" class="nav-link">Home</a>
+                <?php if (isset($breadcrumbs) && is_array($breadcrumbs)): ?>
+                    <div class="nav-breadcrumbs" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">
+                        <?php foreach ($breadcrumbs as $index => $crumb): ?>
+                            <?php if ($index > 0): ?>
+                                <i class="fas fa-chevron-right" style="font-size: 0.625rem; color: var(--gray-400);"></i>
+                            <?php endif; ?>
+                            
+                            <?php if (isset($crumb['url'])): ?>
+                                <a href="<?php echo $crumb['url']; ?>" class="nav-link" style="padding: 0; font-weight: 500; color: var(--gray-500);"><?php echo htmlspecialchars($crumb['label']); ?></a>
+                            <?php else: ?>
+                                <span style="font-weight: 600; color: var(--gray-900);"><?php echo htmlspecialchars($crumb['label']); ?></span>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <a href="<?php echo APP_URL; ?>/catalog.php?cat=electronics" class="nav-link">Electronics</a>
+                    <a href="<?php echo APP_URL; ?>/catalog.php?cat=fashion" class="nav-link">Fashion</a>
+                    <a href="<?php echo APP_URL; ?>" class="nav-link">Home</a>
+                <?php endif; ?>
             </div>
             
             <div class="nav-actions">
