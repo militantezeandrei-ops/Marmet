@@ -29,14 +29,6 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 
-<div class="container" style="margin-top: 2rem;">
-    <div class="category-filter-bar" style="margin-bottom: 2rem;">
-        <a href="catalog.php" class="btn" style="background: var(--primary); color: white; border-radius: 20px; padding: 0.5rem 1.5rem;">All Products</a>
-        <?php foreach (array_slice($categories, 0, 4) as $cat): ?>
-        <a href="catalog.php?category=<?php echo $cat['id']; ?>" class="btn" style="background: var(--gray-100); color: var(--gray-600); border-radius: 20px; padding: 0.5rem 1.5rem;"><?php echo htmlspecialchars($cat['name']); ?></a>
-        <?php endforeach; ?>
-    </div>
-</div>
 
 <section class="section" id="categories">
     <div class="container">

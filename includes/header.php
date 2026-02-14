@@ -12,6 +12,39 @@ if (isLoggedIn() && hasRole('customer')) {
     require_once __DIR__ . '/db.php';
     $cartCount = db()->count("SELECT SUM(quantity) FROM cart WHERE user_id = ?", [getCurrentUserId()]) ?? 0;
 }
+
+// Global Category Navigation Logic
+require_once __DIR__ . '/db.php';
+$globalCategories = db()->fetchAll("
+    SELECT c.* FROM categories c 
+    WHERE c.is_active = 1 
+    AND EXISTS (
+        SELECT 1 FROM products p 
+        WHERE p.category_id = c.id AND p.is_active = 1 
+        AND p.image_url IS NOT NULL AND p.image_url != ''
+    )
+    ORDER BY c.name
+");
+
+$categoryIconMap = [
+    "Women's Fashion" => 'fa-female',
+    "Men's Fashion" => 'fa-male',
+    "Footwear" => 'fa-shoe-prints',
+    "Accessories" => 'fa-gem',
+    "Lifestyle" => 'fa-heart',
+    "Appliances" => 'fa-plug',
+    "Bags" => 'fa-shopping-bag',
+    "Bottomwear" => 'fa-socks',
+    "Gadgets" => 'fa-mobile-alt',
+    "Skincare" => 'fa-magic',
+    "Topwear" => 'fa-tshirt',
+    "Underwear" => 'fa-user-ninja',
+    "Food & Drink" => 'fa-utensils',
+    "Others" => 'fa-ellipsis-h'
+];
+
+$isCheckoutPage = (basename($_SERVER['PHP_SELF']) == 'checkout.php');
+$currentCategoryId = isset($_GET['category']) ? (int)$_GET['category'] : null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,7 +63,7 @@ if (isLoggedIn() && hasRole('customer')) {
     <?php endif; ?>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body>
+<body class="<?php echo !$isCheckoutPage ? 'has-global-filter' : ''; ?>">
     <nav class="navbar">
         <div class="nav-container">
             <button class="nav-toggle" id="navToggle" style="background: none; border: none; font-size: 1.5rem; color: var(--dark); cursor: pointer;">
@@ -80,5 +113,24 @@ if (isLoggedIn() && hasRole('customer')) {
             </div>
         </div>
     </nav>
+
+    <?php if (!$isCheckoutPage): ?>
+    <div class="global-category-bar">
+        <div class="nav-container category-scroll-container">
+            <a href="<?php echo APP_URL; ?>/catalog.php" class="category-chip <?php echo !$currentCategoryId ? 'active' : ''; ?>">
+                <i class="fas fa-grid-2"></i>
+                <span>All</span>
+            </a>
+            <?php foreach ($globalCategories as $cat): 
+                $icon = $categoryIconMap[$cat['name']] ?? 'fa-tag';
+            ?>
+            <a href="<?php echo APP_URL; ?>/catalog.php?category=<?php echo $cat['id']; ?>" class="category-chip <?php echo $currentCategoryId == $cat['id'] ? 'active' : ''; ?>">
+                <i class="fas <?php echo $icon; ?>"></i>
+                <span><?php echo htmlspecialchars($cat['name']); ?></span>
+            </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
     
     <main class="main-content">

@@ -91,14 +91,6 @@ require_once __DIR__ . '/includes/header.php';
                 <i class="fas fa-search"></i>
                 <input type="text" name="search" id="searchInput" placeholder="Search products..." value="<?php echo htmlspecialchars($search); ?>">
             </div>
-            <select name="category" id="categoryFilter" class="catalog-filter-select">
-                <option value="">All Categories</option>
-                <?php foreach ($categories as $cat): ?>
-                <option value="<?php echo $cat['id']; ?>" <?php echo $categoryId == $cat['id'] ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($cat['name']); ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
             <select name="sort" id="sortFilter" class="catalog-filter-select">
                 <option value="newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>>Newest</option>
                 <option value="price_low" <?php echo $sort == 'price_low' ? 'selected' : ''; ?>>Price: Low → High</option>
