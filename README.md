@@ -18,9 +18,7 @@ Move the project folder into your web server's root directory (e.g., `C:\laragon
 ### 3. Database Setup
 1. Open your database management tool (like HeidiSQL or phpMyAdmin).
 2. Create a new database named `marmet_db`.
-3. Import the following SQL files from the `database/` directory in order:
-   - `database.sql` (Schema and initial data)
-   - `update_categories.sql` (Modern category assignments)
+3. Import the `database/marmet_db_latest.sql` file. This file contains the complete schema and all the current product data with corrected image paths.
 
 ### 4. Configuration
 Rename or edit `includes/config.php` to match your local database credentials:
