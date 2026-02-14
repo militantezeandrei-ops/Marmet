@@ -75,18 +75,18 @@ $orders = db()->fetchAll("
     ORDER BY o.created_at DESC
 ", $params);
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/admin_header.php';
 ?>
 
-<div class="page-header">
-    <div class="page-header-content">
-        <h1 class="page-title">Order Verification</h1>
-        <a href="dashboard.php" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; color: var(--admin-text-primary);">Order Verification</h1>
+        <p style="color: var(--admin-text-secondary);">Review and update customer order statuses</p>
     </div>
 </div>
 
-<div class="section" style="padding-top: 2rem;">
-    <div class="container">
+<div style="padding-top: 1rem;">
+    <div class="admin-card" style="padding: 1.5rem; border-radius: 16px; border: 1px solid var(--admin-border); box-shadow: var(--admin-shadow); background: var(--admin-content-bg);">
         <?php if ($message): ?>
         <div class="alert alert-success mb-3"><i class="fas fa-check"></i> <?php echo $message; ?></div>
         <?php endif; ?>
@@ -274,4 +274,4 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>

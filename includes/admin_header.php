@@ -59,12 +59,12 @@ $currentPage = $_GET['page'] ?? basename($_SERVER['PHP_SELF'], '.php');
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="adminSidebar">
         <!-- Logo -->
-        <div class="admin-logo">
+        <a href="<?php echo APP_URL . '/' . $userRole . '/dashboard.php'; ?>" class="admin-logo" style="text-decoration: none;">
             <div class="admin-logo-icon">
                 <i class="fas fa-shopping-bag"></i>
             </div>
             <div class="admin-logo-text"><?php echo $userRole === 'admin' ? 'Admin' : 'ShopManager'; ?></div>
-        </div>
+        </a>
         
         <!-- Navigation -->
         <nav class="admin-nav">

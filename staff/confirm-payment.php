@@ -57,13 +57,13 @@ $confirmedPayments = db()->fetchAll("
     LIMIT 20
 ");
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/admin_header.php';
 ?>
 
-<div class="page-header">
-    <div class="page-header-content">
-        <h1 class="page-title">Payment Confirmation</h1>
-        <a href="dashboard.php" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> Back</a>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 800; color: var(--admin-text-primary);">Payment Confirmation</h1>
+        <p style="color: var(--admin-text-secondary);">Verify GCash references and confirm customer payments</p>
     </div>
 </div>
 
@@ -175,4 +175,4 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>

@@ -29,7 +29,7 @@ $lowStockBySupplier = db()->fetchAll("
     ORDER BY s.name, i.quantity ASC
 ");
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/admin_header.php';
 ?>
 
 <div class="page-header">
@@ -89,4 +89,4 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
