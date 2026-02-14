@@ -10,9 +10,12 @@
     --admin-text-secondary: #475569;
     --admin-text-muted: #94a3b8;
 
-    /* Brand Colors */
-    --admin-primary: #3b82f6;
-    --admin-primary-hover: #2563eb;
+    /* Brand Colors - More Vibrant */
+    --admin-primary: #4f46e5;
+    --admin-primary-hover: #4338ca;
+
+    /* Surface Colors */
+    --admin-bg-alt: #f1f5f9;
 
     /* Status Colors */
     --admin-success: #10b981;
@@ -25,10 +28,10 @@
     --admin-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
     --admin-shadow-premium: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
-    /* Glassmorphism Accents */
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.4);
-    --glass-blur: blur(12px);
+    /* Glassmorphism Accents - Stronger */
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-blur: blur(16px);
 
     /* Gradients */
     --admin-gradient-primary: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -77,7 +80,19 @@ body.admin-body {
     bottom: 0;
     overflow-y: auto;
     z-index: 100;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02);
+}
+
+.admin-sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--admin-gradient-primary);
+    z-index: 101;
 }
 
 /* Logo */

@@ -78,11 +78,15 @@ $orders = db()->fetchAll("
 require_once __DIR__ . '/../includes/admin_header.php';
 ?>
 
-<div style="margin-bottom: 2.5rem; padding: 2rem; background: var(--admin-gradient-primary); border-radius: 24px; color: white; box-shadow: var(--admin-shadow-premium); position: relative; overflow: hidden;">
-    <div style="position: absolute; top: 0; right: 0; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); transform: translate(30%, -30%);"></div>
+<div style="margin-bottom: 2.5rem; padding: 2.5rem; background: var(--admin-gradient-primary); border-radius: 32px; color: white; box-shadow: var(--admin-shadow-premium); position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center;">
+    <div style="position: absolute; top: 0; right: 0; width: 400px; height: 400px; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%); transform: translate(30%, -30%);"></div>
     <div style="position: relative; z-index: 1;">
-        <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.5rem;">Order Verification</h1>
-        <p style="opacity: 0.9; font-size: 1.1rem; font-weight: 500;">Real-time order management & verification center</p>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+             <span class="pulse-primary" style="width: 10px; height: 10px; background: #4ade80; border-radius: 50%; display: inline-block;"></span>
+             <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8;">Admin Portal v2.0</span>
+        </div>
+        <h1 style="font-size: 3rem; font-weight: 900; letter-spacing: -0.04em; margin: 0; line-height: 1;">Order Verification</h1>
+        <p style="opacity: 0.9; font-size: 1.25rem; font-weight: 500; margin-top: 0.5rem;">Real-time management system</p>
     </div>
 </div>
 
