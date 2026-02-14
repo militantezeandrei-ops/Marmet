@@ -11,9 +11,10 @@ requireAuth();
 requireRole(['staff', 'admin']);
 
 // Get stats
-$pendingOrders = db()->count("SELECT COUNT(*) FROM orders WHERE order_status = 'pending'");
-$todayOrders = db()->count("SELECT COUNT(*) FROM orders WHERE DATE(created_at) = CURDATE()");
-$verifiedOrders = db()->count("SELECT COUNT(*) FROM orders WHERE order_status = 'verified'");
+$pendingOrders = db()->count("SELECT COUNT(*) FROM orders WHERE order_status = 'Pending'");
+$todayOrders = db()->count("SELECT COUNT(*) FROM orders WHERE DATE(created_at) = CURDATE() AND order_status != 'Cancelled'");
+$verifiedOrders = db()->count("SELECT COUNT(*) FROM orders WHERE order_status = 'Confirmed'");
+$cancelledOrders = db()->count("SELECT COUNT(*) FROM orders WHERE order_status = 'Cancelled' AND updated_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
 $lowStockProducts = db()->count("SELECT COUNT(*) FROM inventory i JOIN products p ON i.product_id = p.id WHERE i.quantity <= i.low_stock_threshold AND p.is_active = 1");
 
 // Get recent orders
@@ -31,7 +32,7 @@ require_once __DIR__ . '/../includes/admin_header.php';
 
 
 <!-- Dashboard Stats -->
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
     <div class="glass-card hover-lift" style="padding: 2rem; border-radius: 28px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
             <div style="width: 44px; height: 44px; background: rgba(79, 70, 229, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--admin-primary);">
@@ -52,13 +53,28 @@ require_once __DIR__ . '/../includes/admin_header.php';
             <div style="width: 44px; height: 44px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--admin-warning);">
                 <i class="fas fa-hourglass-half"></i>
             </div>
-            <span class="admin-badge admin-badge-warning pulse-warning" style="padding: 0.4rem 0.8rem; border-radius: 10px; font-size: 0.7rem;">IN PROGRESS</span>
+            <span class="admin-badge admin-badge-warning pulse-warning" style="padding: 0.4rem 0.8rem; border-radius: 10px; font-size: 0.7rem;">ACTIVITIES</span>
         </div>
         <div style="font-size: 3rem; font-weight: 900; color: var(--admin-text-primary); margin-bottom: 0.25rem;">
             <?php echo $todayOrders; ?>
         </div>
         <div style="color: var(--admin-text-secondary); font-size: 0.95rem; font-weight: 500;">
-            Deliveries Active Today
+            Orders Active Today
+        </div>
+    </div>
+
+    <div class="glass-card hover-lift" style="padding: 2rem; border-radius: 28px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <div style="width: 44px; height: 44px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--admin-error);">
+                <i class="fas fa-undo"></i>
+            </div>
+            <span class="admin-badge admin-badge-draft" style="padding: 0.4rem 0.8rem; border-radius: 10px; font-size: 0.7rem;">CANCELLATIONS</span>
+        </div>
+        <div style="font-size: 3rem; font-weight: 900; color: var(--admin-text-primary); margin-bottom: 0.25rem;">
+            <?php echo $cancelledOrders; ?>
+        </div>
+        <div style="color: var(--admin-text-secondary); font-size: 0.95rem; font-weight: 500;">
+            Cancelled (Last 24h)
         </div>
     </div>
     
@@ -114,7 +130,11 @@ require_once __DIR__ . '/../includes/admin_header.php';
                     <td><?php echo date('M d, Y', strtotime($order['created_at'])); ?></td>
                     <td><strong>₱<?php echo number_format($order['total_amount'], 2); ?></strong></td>
                     <td>
-                        <span class="admin-badge admin-badge-inactive">Pending</span>
+                        <?php if ($order['order_status'] === 'Cancelled'): ?>
+                            <span class="admin-badge admin-badge-draft">Cancelled</span>
+                        <?php else: ?>
+                            <span class="admin-badge admin-badge-inactive">Pending</span>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <div style="display: flex; gap: 0.5rem;">

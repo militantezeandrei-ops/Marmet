@@ -99,14 +99,32 @@ $showFields = !$hasSavedAddress || !empty($_POST);
     } else {
         try {
             db()->beginTransaction();
+            
+            // Re-verify stock for all items before proceeding
+            foreach ($itemsToCheckout as $item) {
+                $currentStock = db()->fetch("SELECT quantity FROM inventory WHERE product_id = ? FOR UPDATE", [$item['product_id']])['quantity'] ?? 0;
+                if ($currentStock < $item['quantity']) {
+                    throw new Exception("Insufficient stock for: " . $item['name']);
+                }
+            }
+
             $orderNumber = ORDER_PREFIX . date('Ymd') . strtoupper(substr(md5(uniqid()), 0, 6));
             
             $orderId = db()->insert("
-                INSERT INTO orders (user_id, order_number, subtotal, tax_amount, total_amount, payment_method, shipping_address, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO orders (user_id, order_number, subtotal, tax_amount, total_amount, payment_method, shipping_address, notes, order_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
             ", [$userId, $orderNumber, $subtotal, $tax, $total, $paymentMethod, $address, $notes]);
             
             foreach ($itemsToCheckout as $item) {
+                // Deduct stock
+                db()->execute("UPDATE inventory SET quantity = quantity - ? WHERE product_id = ?", [$item['quantity'], $item['product_id']]);
+                
+                // Log stock movement
+                db()->insert("
+                    INSERT INTO stock_movements (product_id, quantity_change, movement_type, reference_id, notes)
+                    VALUES (?, ?, 'sale', ?, ?)
+                ", [$item['product_id'], -$item['quantity'], $orderId, "Order #$orderNumber"]);
+
                 db()->insert("
                     INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
                     VALUES (?, ?, ?, ?, ?, ?)
@@ -126,7 +144,7 @@ $showFields = !$hasSavedAddress || !empty($_POST);
             exit;
         } catch (Exception $e) {
             db()->rollback();
-            $error = 'Failed to process order. Please try again.';
+            $error = $e->getMessage() ?: 'Failed to process order. Please try again.';
         }
     }
 }

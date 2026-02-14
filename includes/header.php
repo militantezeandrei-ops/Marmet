@@ -113,8 +113,9 @@ $currentCategoryId = isset($_GET['category']) ? (int)$_GET['category'] : null;
                 
                 <?php if (isLoggedIn()): ?>
                     <div class="nav-user" style="position: relative;">
-                        <button class="user-btn" id="userBtn" style="background: var(--gray-100); border-radius: 8px; padding: 0.5rem 0.75rem; border: none; cursor: pointer; color: var(--dark);">
+                        <button class="user-btn" id="userBtn" style="background: var(--gray-100); border-radius: 8px; padding: 0.5rem 0.75rem; border: none; cursor: pointer; color: var(--dark); display: flex; align-items: center; gap: 0.5rem;">
                             <i class="fas fa-user"></i>
+                            <span style="font-weight: 600; font-size: 0.875rem;"><?php echo htmlspecialchars($currentUser['first_name'] ?? 'Account'); ?></span>
                         </button>
                         <div class="user-dropdown" id="userDropdown" style="position: absolute; top: 100%; right: 0; background: white; border-radius: 12px; box-shadow: var(--shadow-lg); width: 200px; margin-top: 0.5rem; z-index: 1000; overflow: hidden; border: 1px solid var(--gray-200);">
                             <a href="<?php echo APP_URL; ?>/profile.php" style="display: block; padding: 0.75rem 1rem; color: var(--dark); text-decoration: none; border-bottom: 1px solid var(--gray-100);"><i class="fas fa-user-circle" style="margin-right: 0.5rem;"></i> Profile</a>
@@ -130,23 +131,31 @@ $currentCategoryId = isset($_GET['category']) ? (int)$_GET['category'] : null;
         </div>
     </nav>
 
-    <?php if (!$isCheckoutPage): ?>
-    <div class="global-category-bar">
-        <div class="nav-container category-scroll-container">
-            <a href="<?php echo APP_URL; ?>/catalog.php" class="category-chip <?php echo !$currentCategoryId ? 'active' : ''; ?>">
-                <i class="fas fa-grid-2"></i>
-                <span>All</span>
-            </a>
-            <?php foreach ($globalCategories as $cat): 
-                $icon = $categoryIconMap[$cat['name']] ?? 'fa-tag';
-            ?>
-            <a href="<?php echo APP_URL; ?>/catalog.php?category=<?php echo $cat['id']; ?>" class="category-chip <?php echo $currentCategoryId == $cat['id'] ? 'active' : ''; ?>">
-                <i class="fas <?php echo $icon; ?>"></i>
-                <span><?php echo htmlspecialchars($cat['name']); ?></span>
-            </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    <?php endif; ?>
-    
     <main class="main-content">
+        <div class="main-layout-wrapper">
+            <?php if (!$isCheckoutPage): ?>
+            <aside class="sidebar-category-bar">
+                <div class="sidebar-container">
+                    <div class="sidebar-header">
+                        <i class="fas fa-list-ul"></i>
+                        <span>Categories</span>
+                    </div>
+                    <div class="category-scroll-container">
+                        <a href="<?php echo APP_URL; ?>/catalog.php" class="category-chip <?php echo !$currentCategoryId ? 'active' : ''; ?>">
+                            <i class="fas fa-grid-2"></i>
+                            <span>All Products</span>
+                        </a>
+                        <?php foreach ($globalCategories as $cat): 
+                            $icon = $categoryIconMap[$cat['name']] ?? 'fa-tag';
+                        ?>
+                        <a href="<?php echo APP_URL; ?>/catalog.php?category=<?php echo $cat['id']; ?>" class="category-chip <?php echo $currentCategoryId == $cat['id'] ? 'active' : ''; ?>">
+                            <i class="fas <?php echo $icon; ?>"></i>
+                            <span><?php echo htmlspecialchars($cat['name']); ?></span>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </aside>
+            <?php endif; ?>
+            
+            <div class="page-content">

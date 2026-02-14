@@ -32,7 +32,7 @@ $curr = db()->fetch("
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     JOIN products p ON oi.product_id = p.id
-    WHERE o.order_status = 'delivered' AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+    WHERE o.order_status = 'Completed' AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
 ", [$days]);
 
 // Previous Summary Metrics (for trends)
@@ -44,7 +44,7 @@ $prev = db()->fetch("
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     JOIN products p ON oi.product_id = p.id
-    WHERE o.order_status = 'delivered' 
+    WHERE o.order_status = 'Completed' 
     AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
     AND o.created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY)
 ", [$days * 2, $days]);
@@ -73,7 +73,7 @@ $dailyData = db()->fetchAll("
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     JOIN products p ON oi.product_id = p.id
-    WHERE o.order_status = 'delivered' AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+    WHERE o.order_status = 'Completed' AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
     GROUP BY DATE(o.created_at)
     ORDER BY date ASC
 ", [$days]);

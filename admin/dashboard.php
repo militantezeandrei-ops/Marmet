@@ -11,7 +11,7 @@ requireAuth();
 requireRole('admin');
 
 // Get stats
-$totalRevenue = db()->fetch("SELECT SUM(total_amount) as total FROM orders WHERE order_status = 'delivered'")['total'] ?? 0;
+$totalRevenue = db()->fetch("SELECT SUM(total_amount) as total FROM orders WHERE order_status = 'Completed'")['total'] ?? 0;
 $totalOrders = db()->count("SELECT COUNT(*) FROM orders");
 $totalCustomers = db()->count("SELECT COUNT(*) FROM users WHERE role = 'customer'");
 $totalProducts = db()->count("SELECT COUNT(*) FROM products WHERE is_active = 1");
@@ -196,10 +196,11 @@ require_once __DIR__ . '/../includes/admin_header.php';
                     <td>
                         <?php
                         $statusClass = [
-                            'pending' => 'admin-badge-inactive',
-                            'verified' => 'admin-badge-published',
-                            'delivered' => 'admin-badge-published',
-                            'cancelled' => 'admin-badge-draft'
+                            'Pending' => 'admin-badge-inactive',
+                            'Confirmed' => 'admin-badge-published',
+                            'Processing' => 'admin-badge-published',
+                            'Completed' => 'admin-badge-published',
+                            'Cancelled' => 'admin-badge-draft'
                         ];
                         $class = $statusClass[$order['order_status']] ?? 'admin-badge-draft';
                         ?>

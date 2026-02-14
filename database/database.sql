@@ -100,7 +100,7 @@ CREATE TABLE orders (
     total_amount DECIMAL(10,2) NOT NULL,
     payment_method ENUM('cod', 'gcash') NOT NULL,
     payment_status ENUM('pending', 'confirmed', 'failed') DEFAULT 'pending',
-    order_status ENUM('pending', 'verified', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+    order_status ENUM('Pending', 'Confirmed', 'Processing', 'Completed', 'Cancelled') DEFAULT 'Pending',
     shipping_address TEXT NOT NULL,
     notes TEXT,
     verified_by INT NULL,

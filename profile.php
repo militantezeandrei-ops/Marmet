@@ -67,7 +67,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="card-body">
                     <input type="hidden" name="action" value="update_profile">
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="grid-1-1-mobile" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label class="form-label">First Name</label>
                             <input type="text" name="first_name" class="form-input" 
