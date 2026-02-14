@@ -1,0 +1,6 @@
+# MARMET Git Ignore
+debug_login.php
+reset_admin.php
+*.log
+.DS_Store
+Thumbs.db

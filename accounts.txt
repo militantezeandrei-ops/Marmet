@@ -1,0 +1,3 @@
+admin = admin@marmet.com - admin123
+staff = son@gmail.com - songoku
+customer = zeandrei@gmail.com - zeandrei123
