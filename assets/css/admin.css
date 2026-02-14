@@ -23,6 +23,17 @@
     /* Shadows */
     --admin-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --admin-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+    --admin-shadow-premium: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+    /* Glassmorphism Accents */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-blur: blur(12px);
+
+    /* Gradients */
+    --admin-gradient-primary: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    --admin-gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --admin-gradient-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 /* ShopX Admin (Dark Theme) - For Admins */
@@ -35,6 +46,8 @@
     --admin-text-secondary: #94a3b8;
     --admin-text-muted: #64748b;
     --admin-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.05);
 }
 
 * {
@@ -309,6 +322,43 @@ body.admin-body {
     padding: 1.5rem;
 }
 
+/* Glassmorphism */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--admin-shadow-premium);
+}
+
+/* Animations */
+@keyframes pulse-status {
+    0% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+}
+
+.pulse-warning {
+    animation: pulse-status 2s infinite;
+}
+
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--admin-shadow-premium);
+}
+
 /* Tables */
 .admin-table-container {
     overflow-x: auto;
@@ -386,10 +436,44 @@ body.admin-body {
 .admin-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.625rem;
-    border-radius: 6px;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.admin-badge-pending,
+.admin-badge-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--admin-warning);
+}
+
+.admin-badge-verified,
+.admin-badge-info,
+.admin-badge-processing {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--admin-info);
+}
+
+.admin-badge-shipped,
+.admin-badge-primary {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--admin-primary);
+}
+
+.admin-badge-delivered,
+.admin-badge-success,
+.admin-badge-confirmed {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--admin-success);
+}
+
+.admin-badge-cancelled,
+.admin-badge-error,
+.admin-badge-failed {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--admin-error);
 }
 
 .admin-badge-published {
@@ -399,12 +483,12 @@ body.admin-body {
 
 .admin-badge-inactive {
     background: rgba(236, 72, 153, 0.1);
-    color: var(--admin-inactive);
+    color: var(--admin-error);
 }
 
 .admin-badge-draft {
     background: rgba(156, 163, 175, 0.1);
-    color: var(--admin-draft);
+    color: var(--admin-text-secondary);
 }
 
 /* Buttons */

@@ -60,10 +60,11 @@ $confirmedPayments = db()->fetchAll("
 require_once __DIR__ . '/../includes/admin_header.php';
 ?>
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-    <div>
-        <h1 style="font-size: 2rem; font-weight: 800; color: var(--admin-text-primary);">Payment Confirmation</h1>
-        <p style="color: var(--admin-text-secondary);">Verify GCash references and confirm customer payments</p>
+<div style="margin-bottom: 2.5rem; padding: 2rem; background: var(--admin-gradient-primary); border-radius: 24px; color: white; box-shadow: var(--admin-shadow-premium); position: relative; overflow: hidden;">
+    <div style="position: absolute; top: 0; right: 0; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); transform: translate(30%, -30%);"></div>
+    <div style="position: relative; z-index: 1;">
+        <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.5rem;">Payment Confirmation</h1>
+        <p style="opacity: 0.9; font-size: 1.1rem; font-weight: 500;">Verify references and authorize financial transactions</p>
     </div>
 </div>
 
@@ -74,9 +75,12 @@ require_once __DIR__ . '/../includes/admin_header.php';
         <?php endif; ?>
         
         <!-- Pending Payments -->
-        <div class="card mb-3">
-            <div class="card-header">
-                <h3><i class="fas fa-clock" style="color: var(--warning);"></i> Pending Payments (<?php echo count($pendingPayments); ?>)</h3>
+        <div class="glass-card mb-5" style="border-radius: 24px; overflow: hidden;">
+            <div class="admin-card-header" style="padding: 1.5rem 2rem; background: var(--admin-gradient-surface); border-bottom: 1px solid var(--admin-border); display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--admin-text-primary); margin: 0;">
+                    <i class="fas fa-clock pulse-warning" style="color: var(--admin-warning); margin-right: 0.75rem;"></i>
+                    Pending Approvals (<?php echo count($pendingPayments); ?>)
+                </h3>
             </div>
             <?php if (empty($pendingPayments)): ?>
             <div class="card-body text-center" style="padding: 3rem;">
@@ -84,43 +88,45 @@ require_once __DIR__ . '/../includes/admin_header.php';
                 <p style="margin-top: 1rem; color: var(--gray-500);">No pending payments</p>
             </div>
             <?php else: ?>
-            <div class="table-container">
-                <table class="table">
+            <div class="admin-table-container">
+                <table class="admin-table">
                     <thead>
                         <tr>
-                            <th>Order</th>
-                            <th>Customer</th>
-                            <th>Amount</th>
+                            <th style="padding-left: 2rem;">Order Reference</th>
+                            <th>Customer Profile</th>
+                            <th>Transaction Amount</th>
                             <th>Method</th>
-                            <th>Date</th>
-                            <th>Action</th>
+                            <th>Received At</th>
+                            <th style="text-align: right; padding-right: 2rem;">Verification Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($pendingPayments as $payment): ?>
                         <tr>
-                            <td><strong><?php echo htmlspecialchars($payment['order_number']); ?></strong></td>
+                            <td style="padding-left: 2rem;"><strong style="color: var(--admin-primary);"><?php echo htmlspecialchars($payment['order_number']); ?></strong></td>
                             <td>
-                                <?php echo htmlspecialchars($payment['first_name'] . ' ' . $payment['last_name']); ?>
-                                <br><small><?php echo $payment['email']; ?></small>
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-weight: 600; color: var(--admin-text-primary);"><?php echo htmlspecialchars($payment['first_name'] . ' ' . $payment['last_name']); ?></span>
+                                    <span style="font-size: 0.75rem; color: var(--admin-text-muted);"><?php echo $payment['email']; ?></span>
+                                </div>
                             </td>
-                            <td>₱<?php echo number_format($payment['amount'], 2); ?></td>
+                            <td><span style="font-weight: 700; color: var(--admin-text-primary);">₱<?php echo number_format($payment['amount'], 2); ?></span></td>
                             <td>
-                                <span class="badge badge-<?php echo $payment['payment_method'] == 'gcash' ? 'primary' : 'info'; ?>">
+                                <span class="admin-badge admin-badge-<?php echo $payment['payment_method'] == 'gcash' ? 'info' : 'primary'; ?>">
                                     <?php echo strtoupper($payment['payment_method']); ?>
                                 </span>
                             </td>
-                            <td><?php echo date('M d, Y h:i A', strtotime($payment['created_at'])); ?></td>
-                            <td>
-                                <form method="POST" style="display: flex; gap: 0.5rem; align-items: center;">
+                            <td style="font-size: 0.8rem; color: var(--admin-text-secondary);"><?php echo date('M d, h:i A', strtotime($payment['created_at'])); ?></td>
+                            <td style="text-align: right; padding-right: 1.5rem;">
+                                <form method="POST" style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
                                     <input type="hidden" name="payment_id" value="<?php echo $payment['id']; ?>">
                                     <?php if ($payment['payment_method'] == 'gcash'): ?>
-                                    <input type="text" name="reference" class="form-input" placeholder="GCash Ref #" style="width: 120px; padding: 0.5rem;">
+                                    <input type="text" name="reference" class="admin-search" placeholder="GCash Ref #" style="width: 140px; padding: 0.4rem 0.75rem; border-radius: 8px; font-size: 0.8rem;">
                                     <?php endif; ?>
-                                    <button type="submit" name="action" value="confirmed" class="btn btn-sm btn-success">
+                                    <button type="submit" name="action" value="confirmed" class="admin-btn hover-lift" style="background: var(--admin-success); color: white; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0;">
                                         <i class="fas fa-check"></i>
                                     </button>
-                                    <button type="submit" name="action" value="failed" class="btn btn-sm btn-danger" onclick="return confirm('Mark as failed?')">
+                                    <button type="submit" name="action" value="failed" class="admin-btn hover-lift" style="background: rgba(239, 64, 64, 0.1); color: var(--admin-error); width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="return confirm('Mark as failed?')">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </form>
@@ -134,30 +140,33 @@ require_once __DIR__ . '/../includes/admin_header.php';
         </div>
         
         <!-- Recent Payments -->
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-history"></i> Recent Payment History</h3>
+        <div class="glass-card" style="border-radius: 24px; overflow: hidden;">
+            <div class="admin-card-header" style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--admin-border);">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--admin-text-primary); margin: 0;">
+                    <i class="fas fa-history" style="color: var(--admin-text-muted); margin-right: 0.75rem;"></i>
+                    Settlement History
+                </h3>
             </div>
-            <div class="table-container">
-                <table class="table">
+            <div class="admin-table-container">
+                <table class="admin-table">
                     <thead>
-                        <tr>
-                            <th>Order</th>
-                            <th>Customer</th>
-                            <th>Amount</th>
+                        <tr style="background: var(--admin-gradient-surface);">
+                            <th style="padding-left: 2rem;">Transaction</th>
+                            <th>Payer</th>
+                            <th>Settled Amount</th>
                             <th>Status</th>
-                            <th>Reference</th>
-                            <th>Confirmed By</th>
+                            <th>Provider Ref</th>
+                            <th>Authorized By</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($confirmedPayments as $payment): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($payment['order_number']); ?></td>
-                            <td><?php echo htmlspecialchars($payment['first_name'] . ' ' . $payment['last_name']); ?></td>
-                            <td>₱<?php echo number_format($payment['amount'], 2); ?></td>
+                            <td style="padding-left: 2rem;"><?php echo htmlspecialchars($payment['order_number']); ?></td>
+                            <td><span style="font-weight: 500;"><?php echo htmlspecialchars($payment['first_name'] . ' ' . $payment['last_name']); ?></span></td>
+                            <td><strong style="color: var(--admin-text-primary);">₱<?php echo number_format($payment['amount'], 2); ?></strong></td>
                             <td>
-                                <span class="badge badge-<?php echo $payment['status'] == 'confirmed' ? 'success' : 'error'; ?>">
+                                <span class="admin-badge admin-badge-<?php echo $payment['status'] == 'confirmed' ? 'success' : 'error'; ?>">
                                     <?php echo ucfirst($payment['status']); ?>
                                 </span>
                             </td>
