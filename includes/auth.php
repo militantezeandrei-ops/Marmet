@@ -147,6 +147,9 @@ function redirectToDashboard() {
         case 'staff':
             header('Location: ' . APP_URL . '/staff/dashboard.php');
             break;
+        case 'customer':
+            header('Location: ' . APP_URL . '/index.php');
+            break;
         default:
             header('Location: ' . APP_URL . '/index.php');
     }

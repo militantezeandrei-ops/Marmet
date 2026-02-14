@@ -90,21 +90,27 @@ require_once __DIR__ . '/includes/header.php';
                 </p>
                 
                 <?php if ($product['stock'] > 0): ?>
-                <form id="addToCartForm" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem;">
-                    <div class="quantity-control" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <button type="button" class="quantity-btn qty-minus"><i class="fas fa-minus"></i></button>
-                        <input type="number" class="quantity-input form-input" id="qtyInput" value="1" min="1" max="<?php echo $product['stock']; ?>" style="width: 70px; text-align: center;">
-                        <button type="button" class="quantity-btn qty-plus"><i class="fas fa-plus"></i></button>
+                    <?php if (!isLoggedIn() || hasRole('customer')): ?>
+                    <form id="addToCartForm" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem;">
+                        <div class="quantity-control" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <button type="button" class="quantity-btn qty-minus"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="quantity-input form-input" id="qtyInput" value="1" min="1" max="<?php echo $product['stock']; ?>" style="width: 70px; text-align: center;">
+                            <button type="button" class="quantity-btn qty-plus"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="button" class="btn btn-primary add-to-cart" data-product-id="<?php echo $product['id']; ?>" style="border-radius: 12px; font-weight: 700;">
+                                <i class="fas fa-shopping-cart"></i> Add to Cart
+                            </button>
+                             <button type="button" class="btn btn-buy-now buy-now" data-product-id="<?php echo $product['id']; ?>" style="border-radius: 12px; font-weight: 700;">
+                                Buy Now
+                            </button>
+                        </div>
+                    </form>
+                    <?php else: ?>
+                    <div class="alert alert-info se-card mb-4" style="background: var(--admin-bg); color: var(--admin-text-primary); border: 1px solid var(--admin-border);">
+                        <i class="fas fa-info-circle"></i> Purchasing is disabled for administrative accounts.
                     </div>
-                    <div style="display: flex; gap: 1rem;">
-                        <button type="button" class="btn btn-primary add-to-cart" data-product-id="<?php echo $product['id']; ?>" style="border-radius: 12px; font-weight: 700;">
-                            <i class="fas fa-shopping-cart"></i> Add to Cart
-                        </button>
-                         <button type="button" class="btn btn-buy-now buy-now" data-product-id="<?php echo $product['id']; ?>" style="border-radius: 12px; font-weight: 700;">
-                            Buy Now
-                        </button>
-                    </div>
-                </form>
+                    <?php endif; ?>
                 <?php else: ?>
                 <button class="btn btn-secondary btn-lg" disabled style="opacity: 0.5;">
                     <i class="fas fa-times"></i> Out of Stock
@@ -114,15 +120,7 @@ require_once __DIR__ . '/includes/header.php';
                 <script>
                 document.addEventListener('DOMContentLoaded', function() {
                     const qtyInput = document.getElementById('qtyInput');
-                    const maxStock = <?php echo $product['stock']; ?>;
                     
-                    document.querySelector('.qty-minus')?.addEventListener('click', function() {
-                        if (qtyInput.value > 1) qtyInput.value--;
-                    });
-                    document.querySelector('.qty-plus')?.addEventListener('click', function() {
-                        if (parseInt(qtyInput.value) < maxStock) qtyInput.value++;
-                    });
-
                     // Add to Cart
                     document.querySelector('.add-to-cart')?.addEventListener('click', function() {
                         const productId = this.dataset.productId;

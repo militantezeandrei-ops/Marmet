@@ -67,13 +67,22 @@ $total = $subtotal + $tax;
 
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $address = trim($_POST['address'] ?? '');
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Collect structured address fields
+    $street = trim($_POST['street'] ?? '');
+    $barangay = trim($_POST['barangay'] ?? '');
+    $city = trim($_POST['city'] ?? '');
+    $province = trim($_POST['province'] ?? '');
+    $zip = trim($_POST['zip'] ?? '');
+    
+    // Concatenate for DB storage
+    $address = "$street, $barangay, $city, $province, $zip";
+    
     $paymentMethod = $_POST['payment_method'] ?? '';
     $notes = trim($_POST['notes'] ?? '');
     
-    if (empty($address)) {
-        $error = 'Please enter your shipping address';
+    if (empty($street) || empty($barangay) || empty($city) || empty($province) || empty($zip)) {
+        $error = 'Please fill in all shipping address fields';
     } elseif (!in_array($paymentMethod, ['cod', 'gcash'])) {
         $error = 'Please select a payment method';
     } else {
@@ -165,9 +174,31 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
                     </div>
 
-                    <div class="form-group mb-4">
-                        <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Shipping Address *</label>
-                        <textarea name="address" class="form-control" rows="3" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 1rem;" placeholder="House No., Street name, Barangay, City, Province"><?php echo htmlspecialchars($_POST['address'] ?? $user['address'] ?? ''); ?></textarea>
+                    <div class="form-group mb-3">
+                        <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Street Address / House Number *</label>
+                        <input type="text" name="street" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. 123 Rizal St." value="<?php echo htmlspecialchars($_POST['street'] ?? ''); ?>">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div class="form-group">
+                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Barangay / Neighborhood *</label>
+                            <input type="text" name="barangay" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Brgy. 1" value="<?php echo htmlspecialchars($_POST['barangay'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">City / Municipality *</label>
+                            <input type="text" name="city" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Makati City" value="<?php echo htmlspecialchars($_POST['city'] ?? ''); ?>">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div class="form-group">
+                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Province / State *</label>
+                            <input type="text" name="province" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. Metro Manila" value="<?php echo htmlspecialchars($_POST['province'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; color: var(--gray-600); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Postal / Zip Code *</label>
+                            <input type="text" name="zip" class="form-control" required style="border-radius: 12px; border: 1px solid var(--gray-200); padding: 0.75rem 1rem;" placeholder="e.g. 1200" value="<?php echo htmlspecialchars($_POST['zip'] ?? ''); ?>">
+                        </div>
                     </div>
 
                     <div class="form-group">

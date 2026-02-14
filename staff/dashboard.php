@@ -25,6 +25,7 @@ $recentOrders = db()->fetchAll("
     LIMIT 10
 ");
 
+// Staff should not have access to shop features from their dashboard
 require_once __DIR__ . '/../includes/admin_header.php';
 ?>
 
