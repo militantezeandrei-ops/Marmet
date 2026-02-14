@@ -53,4 +53,4 @@ Run the synchronization script to ensure the database matches the actual folders
 - **Environment**: Optimized for Laragon on Windows.
 
 ---
-*Developed by Antigravity AI for Militante Zeandrei.*
+*Developed by Militante Zeandrei.*
